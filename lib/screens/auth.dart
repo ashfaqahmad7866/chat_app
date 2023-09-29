@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -9,19 +12,35 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   var _isLogin = true;
-  var _enteredEmail='';
-  var _enteredPassword='';
-  final _formKey=GlobalKey<FormState>();
-  void _submit()
-  {
-   final isValid= _formKey.currentState!.validate();
-   if(isValid)
-   {
-   _formKey.currentState!.save();
-   print(_enteredEmail);
-   print(_enteredPassword);
-   }
+  var _enteredEmail = '';
+  var _enteredPassword = '';
+  final _formKey = GlobalKey<FormState>();
+  void _submit() async {
+    final isValid = _formKey.currentState!.validate();
+    if (isValid) {
+      _formKey.currentState!.save();
+      try {
+        if (_isLogin) {
+          //log users in
+          final loginCredentials = _firebase.signInWithEmailAndPassword(
+              email: _enteredEmail, password: _enteredPassword);
+        } else {
+          final userCredentials =
+              await _firebase.createUserWithEmailAndPassword(
+                  email: _enteredEmail, password: _enteredPassword);
+        }
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'email-already-in-use') {}
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message ?? 'Authentication failed'),
+          ),
+        );
+      }
+    }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,7 +87,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               return null;
                             },
                             onSaved: (newValue) {
-                              _enteredEmail=newValue!;
+                              _enteredEmail = newValue!;
                             },
                           ),
                           TextFormField(
@@ -76,14 +95,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                 const InputDecoration(labelText: 'Password'),
                             obscureText: true,
                             validator: (value) {
-                              if (value == null ||
-                                  value.trim().length<6) {
+                              if (value == null || value.trim().length < 6) {
                                 return 'Password should be at least of 6 characters';
                               }
                               return null;
                             },
                             onSaved: (newValue) {
-                              _enteredPassword=newValue!;
+                              _enteredPassword = newValue!;
                             },
                           ),
                           const SizedBox(height: 12),
